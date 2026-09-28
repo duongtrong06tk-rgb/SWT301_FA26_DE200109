@@ -68,6 +68,55 @@ public class AccountService {
         usernameByEmail.put(emailKey, userKey);
         return ResultCode.SUCCESS;
     }
+    // ================= Quản trị & truy vấn =================
+    public ResultCode disableAccount(String username) {
+        Optional<Account> account = findByUsername(username);
+        if (account.isEmpty()) {
+            return ResultCode.USER_NOT_FOUND;
+        }
+        account.get().setStatus(AccountStatus.DISABLED);
+        return ResultCode.SUCCESS;
+    }
+
+    /** BR-ADM-03: quản trị viên mở khóa tài khoản bị khóa do đăng nhập sai. */
+    public ResultCode unlockAccount(String username) {
+        Optional<Account> account = findByUsername(username);
+        if (account.isEmpty()) {
+            return ResultCode.USER_NOT_FOUND;
+        }
+        account.get().unlock();
+        return ResultCode.SUCCESS;
+    }
+
+    public Optional<Account> findByUsername(String username) {
+        if (isBlank(username)) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(accountsByUsername.get(key(username)));
+    }
+
+    public boolean isLocked(String username) {
+        return findByUsername(username).map(Account::isLocked).orElse(false);
+    }
+
+    // ================= Helpers =================
+    /** Dùng chung cho changePassword và resetPassword: CHG-04 -> 05 -> 06 -> 07. */
+    private ResultCode validateNewPassword(Account account, String newPassword, String confirmPassword) {
+        if (!AccountValidator.isValidPassword(newPassword, account.getUsername())) {
+            return ResultCode.WEAK_PASSWORD;
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            return ResultCode.PASSWORD_MISMATCH;
+        }
+        String newHash = PasswordHasher.hash(account.getSalt(), newPassword);
+        if (newHash.equals(account.getCurrentPasswordHash())) {
+            return ResultCode.SAME_AS_OLD_PASSWORD;
+        }
+        if (account.getPasswordHistory().contains(newHash)) {
+            return ResultCode.PASSWORD_REUSED;
+        }
+        return ResultCode.SUCCESS;
+    }
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
