@@ -163,5 +163,5 @@ class AccountServiceTest {
             assertEquals(ResultCode.INVALID_EMAIL,
                     service.register(USER, "bad-email", PASS, PASS, DOB, null));
         }
-    }g
+    }
 }
